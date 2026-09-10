@@ -7,8 +7,6 @@ from pathlib import Path
 
 import requests
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 # ============================================================
@@ -107,18 +105,22 @@ def post_message(text):
 # ============================================================
 
 def ask_crex_url():
-    while True:
-        url = input("\nPaste CREX URL:\n> ").strip()
+    # Background workers have no interactive stdin. Read the match URL
+    # from the hosting platform's environment instead.
+    url = os.getenv("CREX_URL", "").strip()
 
-        if not url:
-            print("❌ URL cannot be empty.")
-            continue
+    if not url:
+        raise RuntimeError(
+            "CREX_URL missing. Add the CREX match URL as an environment "
+            "variable named CREX_URL."
+        )
 
-        if not url.startswith("https://crex.com/"):
-            print("❌ Please paste a CREX URL.")
-            continue
+    if not url.startswith("https://crex.com/"):
+        raise RuntimeError(
+            "CREX_URL must start with https://crex.com/"
+        )
 
-        return url
+    return url
 
 
 def clean(value):
@@ -847,14 +849,25 @@ def start_browser(url):
 
     print("🌐 Starting Chrome...")
 
-    driver = webdriver.Chrome(
-        service=Service(
-            ChromeDriverManager().install()
-        )
-    )
+    options = webdriver.ChromeOptions()
+
+    # Background workers have no display.
+    options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+
+    # Optional explicit Chrome path for hosts that provide Chrome.
+    chrome_binary = os.getenv("CHROME_BINARY", "").strip()
+    if chrome_binary:
+        options.binary_location = chrome_binary
+
+    # Selenium Manager handles the matching driver.
+    driver = webdriver.Chrome(options=options)
 
     driver.get(url)
-
     time.sleep(7)
 
     return driver
