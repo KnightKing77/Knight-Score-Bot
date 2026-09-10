@@ -1,4 +1,4 @@
-VERSION = "SCORE-PARSER-FIX-V3"
+VERSION = "V5-VOROA-TIMEOUT-FIX"
 import os
 import re
 import time
@@ -846,36 +846,33 @@ def save_score(score):
 # ============================================================
 
 def start_browser(url):
-
     print("🌐 Starting Chrome...")
-
     options = webdriver.ChromeOptions()
-
-    # Background workers have no display.
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
+    # CREX keeps some ad/analytics requests open; don't wait for all of them.
+    options.page_load_strategy = "eager"
 
-    # Optional explicit Chrome path for hosts that provide Chrome.
     chrome_binary = os.getenv("CHROME_BINARY", "").strip()
     if chrome_binary:
         options.binary_location = chrome_binary
 
-    # Selenium Manager handles the matching driver.
     driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(30)
 
-    driver.get(url)
+    try:
+        driver.get(url)
+    except Exception as e:
+        # A CREX page can still have usable DOM content when navigation times out.
+        print(f"⚠️ CREX navigation timeout/interruption: {type(e).__name__}")
+        print("↪️ Continuing with the DOM already loaded...")
+
     time.sleep(7)
-
     return driver
-
-
-# ============================================================
-# MAIN
-# ============================================================
 
 def main():
 
