@@ -1,4 +1,4 @@
-VERSION = "V5-VOROA-TIMEOUT-FIX"
+VERSION = "V6-VOROA-NO-REFRESH"
 import os
 import re
 import time
@@ -995,10 +995,10 @@ def main():
                     POLL_SECONDS
                 )
 
-                # Refresh to get fresh CREX data.
-                driver.refresh()
-
-                time.sleep(2)
+                # CREX updates the live DOM itself. Avoid driver.refresh():
+                # in cloud/headless Chrome it can block on ads/analytics and
+                # cause a renderer timeout after an otherwise successful post.
+                # The next loop reads the already-open live page.
 
             except Exception as error:
 
